@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sinônimos: encontre a palavra certa</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#edf2f0;--ink:#13262b;--mut:#587074;--card:#fff;--line:#cbd8d5;--acc:#1f4fd8;--accbg:#e2e9ff;--onacc:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1a1d;--ink:#e6f0ee;--mut:#93aaae;--card:#15262a;--line:#294246;--acc:#7e9bff;--accbg:#1c2c5a;--onacc:#0e1a1d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1a1d;--ink:#e6f0ee;--mut:#93aaae;--card:#15262a;--line:#294246;--acc:#7e9bff;--accbg:#1c2c5a;--onacc:#0e1a1d;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 1rem/1.5 "Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:28px 20px 64px}
+.brand{font:600 1.15rem "Newsreader",Georgia,serif;letter-spacing:.01em;margin:0 0 56px}
+h1{font:600 clamp(1.8rem,5vw,2.7rem)/1.1 "Newsreader",Georgia,serif;margin:0 0 22px;letter-spacing:-.01em}
+.box{position:relative}
+.field{display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:8px}
+.field:focus-within{border-color:var(--acc)}
+#q{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:400 clamp(1.6rem,6vw,2.4rem) "Newsreader",Georgia,serif;outline:none;padding:4px 0}
+#q::placeholder{color:var(--mut);opacity:.7}
+#go{border:0;border-radius:999px;background:var(--acc);color:var(--onacc);font:600 .95rem "Instrument Sans",system-ui,sans-serif;padding:10px 20px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+#sug{position:absolute;left:0;right:0;top:100%;margin:6px 0 0;padding:6px;list-style:none;background:var(--card);border:1px solid var(--line);border-radius:12px;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.14)}
+#sug[hidden]{display:none}
+#sug li{padding:9px 12px;border-radius:8px;cursor:pointer;font:400 1.15rem "Newsreader",Georgia,serif}
+#sug li[aria-selected="true"],#sug li:hover{background:var(--accbg)}
+.hint{color:var(--mut);font-size:.9rem;margin:10px 0 0}
+.res{margin-top:36px}
+.sec{margin-top:26px}
+.sec h2{font-size:.95rem;font-weight:600;color:var(--mut);margin:0 0 10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:stretch;background:var(--card);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.chip button{border:0;background:transparent;color:var(--ink);cursor:pointer;font:400 1.1rem "Newsreader",Georgia,serif;padding:7px 12px}
+.chip button.c{padding:7px 10px 7px 6px;color:var(--mut);display:flex;align-items:center}
+.chip button:hover{background:var(--accbg)}
+.chip button.c:hover{color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card+.card{margin-top:14px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.top span{color:var(--mut);font-size:.9rem}
+.all{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:6px 12px;font:500 .85rem "Instrument Sans",system-ui,sans-serif;cursor:pointer}
+.all:hover{background:var(--accbg)}
+.word{font:600 clamp(1.6rem,4.5vw,2.2rem) "Newsreader",Georgia,serif;margin:0}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="brand">sinônimos</p>
+  <h1>Qual palavra você quer trocar?</h1>
+  <form class="box" id="f" role="search" autocomplete="off" onsubmit="return false">
+    <div class="field">
+      <input id="q" type="text" placeholder="Digite uma palavra" aria-label="Palavra para buscar" role="combobox" aria-expanded="false" aria-controls="sug" autocapitalize="none" spellcheck="false" autofocus>
+      <button id="go" type="submit">Buscar</button>
+    </div>
+    <ul id="sug" role="listbox" hidden></ul>
+  </form>
+  <p class="hint" id="hint"></p>
+  <div class="res" id="res" aria-live="polite"></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const DATA=`feliz,contente,alegre,satisfeito,radiante,jovial,animado
+triste,abatido,melancólico,desanimado,deprimido,infeliz,pesaroso
+bonito,belo,lindo,formoso,atraente,encantador,elegante
+feio,horrendo,desagradável,medonho,repulsivo,horroroso
+grande,enorme,imenso,vasto,gigante,amplo,extenso,colossal
+pequeno,mínimo,diminuto,reduzido,minúsculo,miúdo
+rápido,veloz,ligeiro,ágil,célere,expedito
+lento,vagaroso,demorado,moroso,pausado,arrastado
+inteligente,esperto,sagaz,perspicaz,astuto,brilhante,sábio
+tolo,bobo,ingênuo,ignorante,néscio,ingênuo
+bom,ótimo,excelente,magnífico,agradável,positivo
+ruim,mau,péssimo,terrível,nocivo,deplorável
+importante,essencial,fundamental,crucial,relevante,primordial,vital
+difícil,complicado,árduo,custoso,penoso,trabalhoso,complexo
+fácil,simples,descomplicado,tranquilo,acessível
+começar,iniciar,principiar,originar,estrear,inaugurar
+terminar,acabar,concluir,finalizar,encerrar,findar,completar
+falar,dizer,conversar,comunicar,declarar,expressar,afirmar,pronunciar
+olhar,ver,observar,contemplar,fitar,enxergar,avistar,mirar
+andar,caminhar,transitar,percorrer,marchar
+pensar,refletir,raciocinar,meditar,cogitar,ponderar,imaginar
+amar,adorar,querer,estimar,apreciar,gostar
+odiar,detestar,abominar,execrar,repudiar,rejeitar
+medo,pavor,temor,receio,horror,susto,terror
+raiva,ira,fúria,cólera,ódio,irritação,rancor
+alegria,felicidade,contentamento,júbilo,euforia,satisfação,regozijo
+tristeza,mágoa,melancolia,pesar,aflição,desânimo,pena
+amigo,companheiro,camarada,colega,parceiro,confidente
+casa,lar,moradia,residência,habitação,morada,domicílio
+trabalho,serviço,emprego,ofício,labor,ocupação,tarefa,profissão
+dinheiro,grana,verba,capital,recursos,numerário,fundos
+problema,dificuldade,obstáculo,empecilho,entrave,imprevisto,impasse
+ajudar,auxiliar,apoiar,socorrer,colaborar,assistir,amparar
+ajuda,auxílio,apoio,socorro,assistência,colaboração,amparo
+mostrar,exibir,apresentar,revelar,demonstrar,expor,evidenciar
+esconder,ocultar,encobrir,camuflar,disfarçar,omitir
+mudar,alterar,modificar,transformar,trocar,converter,variar
+usar,utilizar,empregar,aplicar,manusear
+comprar,adquirir,obter,arrematar
+vender,comercializar,negociar,revender,leiloar
+dar,doar,presentear,conceder,oferecer,entregar
+pegar,agarrar,segurar,apanhar,capturar,tomar,empunhar
+jogar,lançar,arremessar,atirar,largar
+cansado,exausto,esgotado,fatigado,estafado,extenuado
+forte,robusto,vigoroso,potente,resistente,poderoso,firme
+fraco,frágil,debilitado,enfraquecido,delicado,franzino
+rico,abastado,endinheirado,próspero,afortunado,opulento
+pobre,carente,necessitado,humilde,miserável,desfavorecido
+novo,recente,moderno,atual,inédito,fresco,contemporâneo
+velho,antigo,idoso,ultrapassado,arcaico,obsoleto
+cheio,repleto,lotado,abarrotado,pleno,completo,saturado
+vazio,oco,desocupado,deserto,vago,esvaziado
+limpo,asseado,higiênico,puro,imaculado
+sujo,imundo,encardido,manchado,poluído
+claro,nítido,evidente,transparente,límpido,óbvio,luminoso
+escuro,sombrio,tenebroso,negro,opaco,lúgubre
+quente,cálido,ardente,fervente,escaldante,abrasador
+frio,gelado,glacial,gélido,fresco
+calmo,sereno,tranquilo,quieto,pacato,plácido,sossegado
+barulho,ruído,alvoroço,estrondo,algazarra,balbúrdia
+silêncio,quietude,calma,mutismo,sossego,mudez
+rir,gargalhar,sorrir,gracejar,zombar
+chorar,lacrimejar,prantear,soluçar,lamentar,lastimar
+dormir,repousar,cochilar,adormecer,descansar,pernoitar
+acordar,despertar,levantar
+comer,alimentar-se,devorar,ingerir,almoçar,petiscar,degustar
+beber,sorver,tragar,ingerir,libar
+viajar,passear,excursionar,explorar,peregrinar
+voltar,retornar,regressar,tornar,retroceder
+entrar,adentrar,ingressar,penetrar,acessar
+sair,partir,deixar,retirar-se,ausentar-se,emergir
+ganhar,vencer,conquistar,lucrar,receber,triunfar
+perder,extraviar,desperdiçar,esbanjar,fracassar
+achar,encontrar,descobrir,localizar,detectar,topar
+procurar,buscar,pesquisar,investigar,sondar,rastrear
+escolher,selecionar,optar,eleger,preferir
+decidir,resolver,determinar,deliberar,definir
+aprender,estudar,assimilar,apreender,memorizar
+ensinar,instruir,educar,lecionar,orientar,treinar,capacitar
+escrever,redigir,registrar,anotar,compor,elaborar
+pergunta,questão,indagação,interrogação,dúvida,questionamento
+resposta,réplica,retorno,solução,resolução,contestação
+verdade,realidade,veracidade,fato,exatidão,autenticidade
+mentira,falsidade,fraude,engano,invenção,farsa,balela
+erro,equívoco,falha,engano,deslize,lapso,incorreção
+sucesso,êxito,vitória,triunfo,conquista,realização,glória
+fracasso,derrota,malogro,insucesso,fiasco,revés,ruína
+ideia,conceito,noção,pensamento,sugestão,concepção
+objetivo,meta,propósito,finalidade,alvo,intenção
+caminho,trajeto,rota,percurso,estrada,via,itinerário
+pessoa,indivíduo,sujeito,alguém,criatura,cidadão
+coragem,bravura,audácia,ousadia,valentia,destemor,intrepidez
+corajoso,valente,destemido,bravo,audacioso,intrépido,ousado
+chato,entediante,monótono,cansativo,maçante,tedioso,enfadonho
+divertido,engraçado,hilário,prazeroso,jocoso,cômico
+interessante,curioso,fascinante,instigante,intrigante,cativante
+estranho,esquisito,peculiar,bizarro,singular,exótico
+famoso,conhecido,célebre,renomado,notório,ilustre,popular
+perigoso,arriscado,ameaçador,temerário,inseguro,crítico
+seguro,protegido,confiável,garantido,certo,estável
+certo,correto,exato,preciso,adequado,verdadeiro,justo
+muito,bastante,demasiado,farto,numeroso,imenso
+pouco,escasso,raro,limitado,insuficiente
+sempre,constantemente,perpetuamente,eternamente,continuamente,invariavelmente
+nunca,jamais
+rapidamente,depressa,velozmente,logo,prontamente
+agora,atualmente,presentemente,hoje
+talvez,quiçá,porventura,possivelmente,eventualmente,provavelmente,acaso
+porém,mas,contudo,entretanto,todavia,não obstante
+portanto,logo,assim,então,consequentemente,por isso
+cidade,município,metrópole,urbe,localidade
+país,nação,estado,pátria,território,reino
+lugar,local,sítio,ponto,espaço,posição,área
+momento,instante,ocasião,ensejo,circunstância,hora
+começo,início,princípio,origem,gênese,partida,abertura
+fim,término,final,conclusão,desfecho,encerramento,termo
+força,vigor,energia,potência,robustez,poder,garra
+conversa,diálogo,bate-papo,papo,colóquio,prosa,debate
+festa,celebração,comemoração,baile,folia,confraternização
+trabalhar,laborar,atuar,exercer,funcionar,operar,labutar
+brigar,discutir,lutar,desentender-se,disputar,altercar
+ficar,permanecer,restar,continuar,manter-se,persistir
+parar,cessar,interromper,paralisar,deter,suspender
+continuar,prosseguir,persistir,seguir,retomar,perdurar
+precisar,necessitar,requerer,exigir,carecer,demandar
+conseguir,alcançar,lograr,atingir,realizar
+tentar,experimentar,ensaiar,intentar,testar
+querer,desejar,almejar,ansiar,aspirar,pretender,cobiçar
+entender,compreender,perceber,captar,assimilar,notar
+lembrar,recordar,rememorar,relembrar,evocar
+esquecer,olvidar,descuidar,negligenciar
+sentir,perceber,experimentar,pressentir,notar
+preocupação,inquietação,apreensão,ansiedade,cuidado
+tranquilidade,paz,serenidade,calma,placidez
+amor,afeto,carinho,paixão,ternura,afeição,apreço
+beleza,formosura,graça,encanto,esplendor,elegância
+tamanho,dimensão,porte,extensão,proporção,magnitude
+vida,existência,sobrevivência,vivência,subsistência
+morte,falecimento,óbito,passamento,perecimento
+doente,enfermo,adoentado,indisposto,debilitado
+saudável,são,sadio,hígido`;
+const D=DATA.split("\n").map(l=>[...new Set(l.split(",").map(s=>s.trim()))]);
+const norm=s=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," ").trim();
+const idx=new Map();
+D.forEach((g,i)=>g.forEach(w=>{const k=norm(w);if(!idx.has(k))idx.set(k,{w,ids:[]});const e=idx.get(k);if(!e.ids.includes(i))e.ids.push(i)}));
+const keys=[...idx.keys()].sort();
+const $=id=>document.getElementById(id);
+const q=$("q"),sug=$("sug"),res=$("res"),hint=$("hint");
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ICON='<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="5.5" y="5.5" width="8" height="8" rx="1.5"/><path d="M10.5 3.5v-.5A1.5 1.5 0 0 0 9 1.5H3A1.5 1.5 0 0 0 1.5 3v6A1.5 1.5 0 0 0 3 10.5h.5"/></svg>';
+const EX=["feliz","começar","problema","bonito","importante","rápido"];
+let sel=-1,items=[],recent=[];
+try{recent=JSON.parse(localStorage.getItem("syn-recent")||"[]")}catch(e){}
+function saveRecent(w){recent=[w,...recent.filter(x=>x!==w)].slice(0,8);try{localStorage.setItem("syn-recent",JSON.stringify(recent))}catch(e){}}
+function lookup(t){const k=norm(t);if(idx.has(k))return k;for(const c of [k.replace(/oes$|aes$|aos$/,"ao"),k.replace(/ns$/,"m"),k.replace(/(es|s)$/,""),k.replace(/mente$/,"")])if(c!==k&&idx.has(c))return c;return null}
+function lev(a,b){const m=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=m[0];m[0]=i;for(let j=1;j<=b.length;j++){const t=m[j];m[j]=Math.min(m[j]+1,m[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return m[b.length]}
+const chip=w=>`<span class="chip"><button type="button" data-s="${esc(w)}" title="Buscar sinônimos de ${esc(w)}">${esc(w)}</button><button type="button" class="c" data-c="${esc(w)}" aria-label="Copiar ${esc(w)}" title="Copiar">${ICON}</button></span>`;
+const plain=w=>`<span class="chip"><button type="button" data-s="${esc(w)}">${esc(w)}</button></span>`;
+function toast(m){const t=$("toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove("on"),1500)}
+function copy(txt){const done=()=>toast("Copiado: "+txt);if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(txt).then(done,()=>fb(txt,done));else fb(txt,done)}
+function fb(txt,done){const a=document.createElement("textarea");a.value=txt;document.body.appendChild(a);a.select();try{document.execCommand("copy")}catch(e){}a.remove();done()}
+function home(){
+  hint.textContent="Digite uma palavra e pressione Enter. Toque em um sinônimo para explorar ou no ícone para copiar.";
+  let h=`<div class="sec"><h2>Experimente</h2><div class="chips">${EX.map(plain).join("")}</div></div>`;
+  if(recent.length)h+=`<div class="sec"><h2>Buscas recentes</h2><div class="chips">${recent.map(plain).join("")}</div></div>`;
+  res.innerHTML=h;
+}
+function search(t,fromHash){
+  t=(t||"").trim();closeSug();
+  if(!t){home();return}
+  const k=lookup(t);
+  if(!k){
+    const n=norm(t);
+    const near=keys.map(x=>[x,lev(n,x)]).filter(x=>x[1]<=(n.length>5?3:2)).sort((a,b)=>a[1]-b[1]).slice(0,6).map(x=>idx.get(x[0]).w);
+    hint.textContent="";
+    res.innerHTML=`<div class="card"><p class="word">Nenhum resultado para “${esc(t)}”</p><p class="hint">Confira a grafia ou tente a forma básica da palavra (infinitivo para verbos, singular para substantivos).</p>${near.length?`<div class="sec"><h2>Você quis dizer</h2><div class="chips">${near.map(plain).join("")}</div></div>`:""}</div>`;
+    return;
+  }
+  const e=idx.get(k);q.value=e.w;saveRecent(e.w);hint.textContent="";
+  const groups=e.ids.map(i=>D[i].filter(w=>norm(w)!==k));
+  const total=new Set(groups.flat()).size;
+  let h=`<div class="top"><h2 class="word">${esc(e.w)}</h2><span>${total} sinônimo${total>1?"s":""}</span></div>`;
+  groups.forEach((g,i)=>{h+=`<div class="card"><div class="top"><span>${groups.length>1?"Sentido "+(i+1):"Sinônimos"}</span><button type="button" class="all" data-all="${esc(g.join(", "))}">Copiar todos</button></div><div class="chips">${g.map(chip).join("")}</div></div>`});
+  res.innerHTML=h;
+  if(!fromHash){const hs=k.replace(/[^a-z0-9]+/g,"-");if(location.hash!=="#"+hs)history.replaceState(null,"","#"+hs)}
+}
+function closeSug(){sug.hidden=true;sel=-1;q.setAttribute("aria-expanded","false")}
+function suggest(){
+  const n=norm(q.value);if(!n){closeSug();return}
+  const a=keys.filter(k=>k.startsWith(n)),b=keys.filter(k=>!k.startsWith(n)&&k.includes(n));
+  items=[...a,...b].slice(0,6).map(k=>idx.get(k).w);
+  if(!items.length){closeSug();return}
+  sug.innerHTML=items.map((w,i)=>`<li role="option" id="o${i}" data-w="${esc(w)}">${esc(w)}</li>`).join("");
+  sug.hidden=false;sel=-1;q.setAttribute("aria-expanded","true");
+}
+function mark(){[...sug.children].forEach((li,i)=>li.setAttribute("aria-selected",i===sel))}
+q.addEventListener("input",suggest);
+q.addEventListener("keydown",ev=>{
+  if(sug.hidden)return;
+  if(ev.key==="ArrowDown"){ev.preventDefault();sel=(sel+1)%items.length;mark()}
+  else if(ev.key==="ArrowUp"){ev.preventDefault();sel=(sel-1+items.length)%items.length;mark()}
+  else if(ev.key==="Escape")closeSug();
+  else if(ev.key==="Enter"&&sel>=0){ev.preventDefault();search(items[sel])}
+});
+sug.addEventListener("mousedown",ev=>{const li=ev.target.closest("li");if(li){ev.preventDefault();search(li.dataset.w)}});
+document.addEventListener("click",ev=>{
+  const s=ev.target.closest("[data-s]"),c=ev.target.closest("[data-c]"),a=ev.target.closest("[data-all]");
+  if(s){search(s.dataset.s);window.scrollTo({top:0,behavior:"smooth"})}
+  else if(c)copy(c.dataset.c);
+  else if(a)copy(a.dataset.all);
+  else if(!ev.target.closest(".box"))closeSug();
+});
+$("f").addEventListener("submit",()=>search(q.value));
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1).replace(/-/g," ");if(h&&idx.has(h))search(h,true)});
+const h0=location.hash.slice(1).replace(/-/g," ");
+if(h0&&idx.has(h0))search(h0,true);else home();
+</script>
+</body>
+</html>
